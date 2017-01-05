@@ -64,8 +64,12 @@ try:
     #init score to 0
     score=0
 
-    #start executable
-    proc = subprocess.Popen(['./miner', '-benchmark'], stdout=subprocess.PIPE, stdin=subprocess.PIPE, shell=False)
+   
+    #R              //request new input# proc = subprocess.Popen(['./miner', '-benchmark'], stdout=subprocess.PIPE, stdin=subprocess.PIPE, shell=False)
+  
+     #start executable !
+    bashcommand = "nvprof --log-file test.txt ./miner -benchmark"
+    proc = subprocess.Popen(bashcommand.split(), stdout=subprocess.PIPE, stdin=subprocess.PIPE, shell=False)
 
     #handle commands
     solved=0
