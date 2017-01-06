@@ -1,4 +1,4 @@
-#include "hash.h"
+#include "hash.cuh"
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -7,30 +7,21 @@
 #include <stdlib.h>
 
 
-bool next_nonce(char* c){
-    if(c[0]=='\0'){
+char next_nonce(char c){
+    if(c =='\0'){
         return false;
     }
     
-    //if end of range, wrap around and increment next 'digit'
-    if(c[0]=='9'){
-        c[0]='a';
-		//the compiler may generate an 'above array bounds' warning here, which can be safely ignored
-		if (next_nonce(&c[1]))
-            return true;
-        c[0]='\0';
-        return false;
-    }   
-
     //jump boundaries
-    if(c[0]=='z')
-        c[0]='A';
-    else if(c[0]=='Z')
-        c[0]='0';
+    if(c =='z')
+        c ='A';
+    else if(c =='Z')
+        c ='0';
+	else if(c =='9')
+        c ='\0';
     else
-        c[0]++;
-
-    return true;
+        c++;
+    return c ;
 }
 
 
@@ -43,23 +34,26 @@ void benchmark(void){
 	char* d_result;
     //position of repeated string in input
     char* base = &(input[NONCE_SIZE]);
-	
+	char *nonce_enum;
 	
     //holder for the nonce
  //   char nonce[NONCE_SIZE+1];
 
 	
 	/*  initialize nonce_enum[] using nonce_enumtemp */
+
 	
-	char nonce_enumtemp[NONCE_NUM] = {0};
-	
+	char nonce_enumtemp[NONCE_NUM+1] = {0};
+	nonce_enumtemp[0] = 'a';
 	for(int i=1; i<NONCE_NUM ; i++)        // eligible for a new kernal to speed up!
 	{
-		 nonce_enumtemp[0] = 'a';
-		nonce_enumtemp[i] = next_nonce ((char *)&nonce_enumtemp[i-1]);
+		 
+		nonce_enumtemp[i] = next_nonce (nonce_enumtemp[i-1]);
 	}
-	    cudaMemcpyToSymbol(nonce_enum, nonce_enumtemp, sizeof(char) * NONCE_NUM);      
-	
+	  //  cudaMemcpyToSymbol(nonce_enum, nonce_enumtemp, sizeof(char) * (NONCE_NUM+1));    
+
+		//nonce_enumtemp[0] = 'b';
+	//	cudaMemcpyFromSymbol(nonce_enumtemp, nonce_enum, sizeof(char) * (NONCE_NUM+1)); 
 	
     while(true){
     
@@ -73,27 +67,26 @@ void benchmark(void){
             nonce[i]='a';
         nonce[NONCE_SIZE]='\0';
         */
-		result[0] = '\0';
+		result = (char *)malloc( sizeof(char)*2 );
+		result[0] = '0';
 		result[1] = '\0';
-		
-		
 		
 		
 		cudaMalloc((char**)&d_input, sizeof(char)*(INPUT_SIZE+NONCE_SIZE+1));
-		cudaMalloc((char**)&d_result, sizeof(unsigned char));
-			
+		cudaMalloc((char**)&d_result, sizeof(char)*2);
+		cudaMalloc((char**)&nonce_enum, sizeof(char)*(NONCE_NUM+1));
+		
 		cudaMemcpy(d_input, input, sizeof(char)*(INPUT_SIZE+NONCE_SIZE+1), cudaMemcpyHostToDevice);
-		cudaMemcpy(d_result, result, sizeof(unsigned char), cudaMemcpyHostToDevice);
+		cudaMemcpy(d_result, result, sizeof(char)*2, cudaMemcpyHostToDevice);
+		cudaMemcpy(nonce_enum, nonce_enumtemp, sizeof(char)*(NONCE_NUM+1), cudaMemcpyHostToDevice);
 		
-		attempt<<< 62 , 1 >>>((unsigned char*)d_result, (unsigned char*)d_input, strlen(input)); 
-		cudaMemcpy(result, d_result, sizeof(char)*65, cudaMemcpyDeviceToHost);
-		
-		result[0] = 'a';
-		result[1] = '\0';
+		attempt<<< 1 , 1 >>>((char*)d_result, (unsigned char*)d_input, sizeof(unsigned char)*32, nonce_enum ); 
+		cudaMemcpy(result, d_result, sizeof(char)*2, cudaMemcpyDeviceToHost);
+	//	result[0] = d_result[0];
 		
 		cudaFree(d_result);
 		cudaFree(d_input);
-		
+	
 		validateHash(base, result);
 	
 	
@@ -107,7 +100,7 @@ int main(int argc, char *argv[]){
    	if ((argc==2) && (strcmp(argv[1],"-benchmark")==0) ){
         benchmark();
     }
-    
+   
   /*  else if (argc==4){
         //64 chars for 512bit output
         unsigned char output_hash[64+1];

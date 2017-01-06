@@ -1,4 +1,4 @@
-#include "hash.h"
+#include "hash.cuh"
 #include "tables.h"
 
 #define COLWORDS     (STATEWORDS/8)
@@ -16,7 +16,7 @@ __device__ static const u8 shiftvalues[2][8] = { {0, 1, 2, 3, 4, 5, 6, 11}, {1, 
 
 
 
-//__constant__ char nonce_enum[NONCE_NUM];
+//__constant__ char nonce_enum[NONCE_NUM+1];
 
 
 
@@ -230,18 +230,22 @@ __device__ bool check_hash(char* hash){
 }
 
 
-__global__ void attempt( unsigned char *d_result, unsigned char *d_input, unsigned long long inlen )
+__global__ void attempt(char *d_result, unsigned char *d_input, unsigned long long inlen, char *nonce_enum )
 {
-	int i = blockIdx.x;;
+	int i = threadIdx.x;;
 	char output_hash[64+1];   //?
-	
-	d_input[0] = nonce_enum[i];
-	hash((unsigned char*)output_hash, d_input, inlen);
+	//d_input[0] = nonce_enum[i];
+	d_input[0] = '6';
+	d_result[0] = d_input[25];
+	hash((unsigned char*)output_hash, (unsigned char*)d_input, inlen);
+	d_result[0] = output_hash[64];
 	if(check_hash(output_hash))
 	{
 		d_result[0] = d_input[0];
+		//d_result[0] = 'g';
+		
 		//asm("trap;");
 	}
-	
+	syncthreads();
 	
 }
