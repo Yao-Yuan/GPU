@@ -1,7 +1,7 @@
 /* Memxor : dest = dest xor src.
  * Device code.
  */
-
+#include "hash.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 //! Memxor on device dest = dest xor src
@@ -15,7 +15,7 @@ memxor(u32* dest, const u32* src, unsigned int n)
 
   // Write the result to device memory;
   // each thread writes one element
-  if (tx < n){
+  if (tx < STATEWORDS){
   	dest[tx] ^= src[tx];
   }
   //__syncthreads();
