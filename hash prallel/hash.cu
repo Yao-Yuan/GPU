@@ -1,10 +1,8 @@
-#include "hash.cuh"
+#include "hash.h"
 #include "tables.h"
-
+#include <stdio.h>
 #define COLWORDS     (STATEWORDS/8)
 #define BYTESLICE(i) (((i)%8)*STATECOLS+(i)/8)
-
-#include "common.h"
 
 #if CRYPTO_BYTES<=32
 __device__ static const u32 columnconstant[2] = { 0x30201000, 0x70605040 };
@@ -13,12 +11,6 @@ __device__ static const u8 shiftvalues[2][8] = { {0, 1, 2, 3, 4, 5, 6, 7}, {1, 3
 __device__ static const u32 columnconstant[4] = { 0x30201000, 0x70605040, 0xb0a09080, 0xf0e0d0c0 };
 __device__ static const u8 shiftvalues[2][8] = { {0, 1, 2, 3, 4, 5, 6, 11}, {1, 3, 5, 11, 0, 2, 4, 6} };
 #endif
-
-
-
-//__constant__ char nonce_enum[NONCE_NUM+1];
-
-
 
 #define mul2(x,t) \
 {\
@@ -131,12 +123,18 @@ struct state {
   u8 last_padding_block;
 };
 
-__device__ void setmessage(u8* buffer, const u8* in, struct state s, unsigned long long inlen)
+__device__ void setmessage(u8* buffer, const u8* in, struct state s, unsigned long long inlen, int flag, unsigned char *nonce)
 {
   int i;
-  for (i = 0; i < s.bytes_in_block; i++)
-    buffer[BYTESLICE(i)] = in[i];
-
+  if(flag){
+	 buffer[0]=nonce[blockIdx.x]; 
+       for (i = 1; i < s.bytes_in_block; i++)
+          buffer[BYTESLICE(i)] = in[i];
+    }
+	else 
+	 for (i = 0; i < s.bytes_in_block; i++)
+       buffer[BYTESLICE(i)] = in[i];
+  
   if (s.bytes_in_block != STATEBYTES)
   {
     if (s.first_padding_block)
@@ -158,20 +156,37 @@ __device__ void setmessage(u8* buffer, const u8* in, struct state s, unsigned lo
   }
 }
 
-__device__ int hash(unsigned char *out, const unsigned char *in, unsigned long long inlen)
+__device__ bool check_hash(char* hash){
+    //check if first n-characters are zero
+    for(int i=0;i<3;i++)
+		//Note: each 'char' of 8 bits contains 2 hex characters representing 4 bits each.
+		//Hence all this bit shuffling
+		if ((hash[i>>1]&(0xF0>>((i&0x1)<<2)))!=0)
+            return false;
+    return true;
+}
+
+__global__ void hash(unsigned char *out, const unsigned char *in, unsigned long long inlen, unsigned char *nonce)
 {
+ // int tid = blockIdx.x;
+  //__shared__ char temp;
+  __shared__ char output_hash[65];
+  int num;
+  out[0]='\0';
+
   __attribute__ ((aligned (8))) u32 ctx[STATEWORDS];
   __attribute__ ((aligned (8))) u32 buffer[STATEWORDS];
   unsigned long long rlen = inlen;
   struct state s = { STATEBYTES, 0, 0 };
   u8 i;
-
+  int ini_flag = 1;
+	
   /* set inital value */
   for(i=0;i<STATEWORDS;i++)
     ctx[i] = 0;
   ((u8*)ctx)[BYTESLICE(STATEBYTES-2)] = ((CRYPTO_BYTES*8)>>8)&0xff;
   ((u8*)ctx)[BYTESLICE(STATEBYTES-1)] = (CRYPTO_BYTES*8)&0xff;
-
+ 
   /* iterate compression function */
   while(s.last_padding_block == 0)
   {
@@ -192,60 +207,34 @@ __device__ int hash(unsigned char *out, const unsigned char *in, unsigned long l
     }
     else
       rlen-=STATEBYTES;
-
+	
     /* compression function */
-    setmessage((u8*)buffer, in, s, inlen);
-    memxor(buffer, ctx, STATEWORDS);
-    permutation(buffer, 0);
-    memxor(ctx, buffer, STATEWORDS);
-    setmessage((u8*)buffer, in, s, inlen);
-    permutation(buffer, 1);
-    memxor(ctx, buffer, STATEWORDS);
+		setmessage((u8*)buffer, in, s, inlen, ini_flag, nonce);
+		//__syncblocks();
+		memxor(buffer, ctx, STATEWORDS);
+		permutation(buffer, 0);
+		memxor(ctx, buffer, STATEWORDS);
+		setmessage((u8*)buffer, in, s, inlen, ini_flag, nonce);
+		//__syncblocks();
+		permutation(buffer, 1);
+		memxor(ctx, buffer, STATEWORDS);
+		ini_flag = 0;
 
     /* increase message pointer */
     in += STATEBYTES;
+	
   }
 
   /* output transformation */
   for (i=0; i<STATEWORDS; i++)
     buffer[i] = ctx[i];
-  permutation(buffer, 0);
-  memxor(ctx, buffer, STATEWORDS);
+    permutation(buffer, 0);
+    memxor(ctx, buffer, STATEWORDS);
 
   /* return truncated hash value */
   for (i = STATEBYTES-CRYPTO_BYTES; i < STATEBYTES; i++)
-    out[i-(STATEBYTES-CRYPTO_BYTES)] = ((u8*)ctx)[BYTESLICE(i)];
-
-  return 0;
-}
-
-__device__ bool check_hash(char* hash){
-    //check if first n-characters are zero
-    for(int i=0;i<LEADING_ZEROES;i++)
-		//Note: each 'char' of 8 bits contains 2 hex characters representing 4 bits each.
-		//Hence all this bit shuffling
-		if ((hash[i>>1]&(0xF0>>((i&0x1)<<2)))!=0)
-            return false;
-    return true;
-}
-
-
-__global__ void attempt(char *d_result, unsigned char *d_input, unsigned long long inlen, char *nonce_enum )
-{
-	int i = threadIdx.x;;
-	char output_hash[64+1];   //?
-	//d_input[0] = nonce_enum[i];
-	d_input[0] = '6';
-	d_result[0] = d_input[25];
-	hash((unsigned char*)output_hash, (unsigned char*)d_input, inlen);
-	d_result[0] = output_hash[64];
-	if(check_hash(output_hash))
-	{
-		d_result[0] = d_input[0];
-		//d_result[0] = 'g';
+    output_hash[i-(STATEBYTES-CRYPTO_BYTES)] = ((u8*)ctx)[BYTESLICE(i)];
 		
-		//asm("trap;");
-	}
-	syncthreads();
-	
+   if(check_hash(output_hash))
+	   out[0]=nonce[blockIdx.x];
 }
