@@ -4,8 +4,8 @@
 bool requestInput(char* hash){
     printf("R\n");
     fflush(stdout);
-//	 printf("R\n");
     int cnt = scanf("%s", hash);
+
     //check if command is accepted
     if (cnt==0 || strcmp(hash, "NAK")==0){
         hash[0]='\0';
@@ -17,13 +17,13 @@ bool requestInput(char* hash){
         for(int i=0;i<UNIQUE_INPUT_SIZE;i++)
             hash[j*UNIQUE_INPUT_SIZE+i]=hash[i];
     hash[INPUT_SIZE]='\0';//terminate input string
+
     return true;
 }
 
 bool validateHash(char* hash, char* nonce){
     
     //send verify command
-	//printf("hello");
     hash[UNIQUE_INPUT_SIZE]='\0';
     if (nonce[0]!='\0')
         printf("V %s %s\n",hash, nonce);

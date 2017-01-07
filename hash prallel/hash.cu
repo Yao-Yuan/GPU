@@ -106,6 +106,21 @@ __device__ void permutation(u32 *x, int q)
       mixbytes((u32(*)[COLWORDS])x, tmp, j);
   }
 }
+/*
+__device__ void memxor(u32* dest, const u32* src, u32 n)
+{
+  // Thread index
+  int tx = threadIdx.x;
+
+  // Write the result to device memory;
+  // each thread writes one element
+ // if (tx < n){
+  	dest[tx] ^= src[tx];
+ // }
+  __syncthreads();
+}
+*/
+
 
 __device__ void memxor(u32* dest, const u32* src, u32 n)
 {
@@ -170,25 +185,44 @@ __global__ void hash(unsigned char *out, const unsigned char *in, unsigned long 
 {
  // int tid = blockIdx.x;
   //__shared__ char temp;
-  __shared__ char output_hash[65];
-  int num;
-  out[0]='\0';
-
-  __attribute__ ((aligned (8))) u32 ctx[STATEWORDS];
-  __attribute__ ((aligned (8))) u32 buffer[STATEWORDS];
+    int tID = threadIdx.x;
+	int bID = blockIdx.x;
+  
+   __shared__ char output_hash[65];
+   __shared__ char result_flag;
+   
+   if(tID == 0)
+   {
+	   out[0]='\0';
+      result_flag = 0;
+   }
+  
+  
+  __shared__ __attribute__ ((aligned (8))) u32 ctx[STATEWORDS];
+  __shared__ __attribute__ ((aligned (8))) u32 buffer[STATEWORDS];
+  
   unsigned long long rlen = inlen;
-  struct state s = { STATEBYTES, 0, 0 };
-  u8 i;
-  int ini_flag = 1;
+   struct state s = { STATEBYTES, 0, 0 };
+   u8 i;
+   int ini_flag = 1;
 	
   /* set inital value */
-  for(i=0;i<STATEWORDS;i++)
-    ctx[i] = 0;
-  ((u8*)ctx)[BYTESLICE(STATEBYTES-2)] = ((CRYPTO_BYTES*8)>>8)&0xff;
-  ((u8*)ctx)[BYTESLICE(STATEBYTES-1)] = (CRYPTO_BYTES*8)&0xff;
- 
+   		ctx[tID] = 0;
+	
+	
+    
+	if(tID == 0)
+	{
+      ((u8*)ctx)[BYTESLICE(STATEBYTES-2)] = ((CRYPTO_BYTES*8)>>8)&0xff;
+      ((u8*)ctx)[BYTESLICE(STATEBYTES-1)] = (CRYPTO_BYTES*8)&0xff;
+	}
+       __syncthreads();
+	   
+	
+
+	
   /* iterate compression function */
-  while(s.last_padding_block == 0)
+  while(s.last_padding_block == 0 && result_flag == 0)
   {
     if (rlen<STATEBYTES)
     {
@@ -232,9 +266,17 @@ __global__ void hash(unsigned char *out, const unsigned char *in, unsigned long 
     memxor(ctx, buffer, STATEWORDS);
 
   /* return truncated hash value */
+  
   for (i = STATEBYTES-CRYPTO_BYTES; i < STATEBYTES; i++)
     output_hash[i-(STATEBYTES-CRYPTO_BYTES)] = ((u8*)ctx)[BYTESLICE(i)];
 		
    if(check_hash(output_hash))
+   {
 	   out[0]=nonce[blockIdx.x];
+	   result_flag = 1;
+	 // found_flag = 1;
+  // printf(" %d",  blockIdx.x);
+  //  asm("trap;");
+   
+   }
 }

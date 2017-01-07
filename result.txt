@@ -24,3 +24,16 @@ Summary:
 - Processed Blocks:  8
 - Number of Coins:   4
 - Running Time:      3 sec
+
+After hash parallel <<<62,1>>>
+
+Running Time increased to 6 sec
+£¨for <<<62 , 128>>>  20 sec.    put variables to shared memory 18 sec
+
+hash parallel<<<62, 21>>> 
+initial parallel, find one and stop waiting(result_flag)
+----------------------------------------
+- Processed Blocks:  1000
+- Number of Coins:   21
+- Running Time:      401 sec
+----------------------------------------

@@ -76,7 +76,7 @@ void benchmark(void){
 			cudaMemcpy(nonce_enum, nonce_enumtemp, sizeof(char)*62, 
 						cudaMemcpyHostToDevice);
 			/*   Kernal  */			
-			hash<<<62,1>>>((unsigned char*)d_nonce, (unsigned char*)d_input, strlen(input), (unsigned char*)nonce_enum);
+			hash<<<62,32>>>((unsigned char*)d_nonce, (unsigned char*)d_input, strlen(input), (unsigned char*)nonce_enum);
 			
 			/*   Copy result to CPU  */
 			cudaMemcpy(nonce, d_nonce, sizeof(char), cudaMemcpyDeviceToHost);
@@ -138,7 +138,7 @@ int main(int argc, char *argv[]){
 			cudaMemcpy(nonce_enum, nonce_enumtemp, sizeof(char)*62, 
 						cudaMemcpyHostToDevice);
 			/*   Kernal  */			
-			hash<<<62,1>>>((unsigned char*)d_nonce, (unsigned char*)d_input, strlen(input), (unsigned char*)nonce_enum);
+			hash<<<62,32>>>((unsigned char*)d_nonce, (unsigned char*)d_input, strlen(input), (unsigned char*)nonce_enum);
 			
 			/*   Copy result to CPU  */
 			cudaMemcpy(nonce, d_nonce, sizeof(char), cudaMemcpyDeviceToHost);
