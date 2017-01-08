@@ -37,3 +37,12 @@ initial parallel, find one and stop waiting(result_flag)
 - Number of Coins:   21
 - Running Time:      401 sec
 ----------------------------------------
+
+Memxor Parallel:
+
+Summary:
+----------------------------------------
+- Processed Blocks:  1000
+- Number of Coins:   21
+- Running Time:      382 sec
+----------------------------------------

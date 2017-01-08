@@ -122,14 +122,12 @@ __device__ void memxor(u32* dest, const u32* src, u32 n)
 */
 
 
-__device__ void memxor(u32* dest, const u32* src, u32 n)
+__device__ void memxor(u32* dest, const u32* src)
 {
-  while(n--)
-  {
-    *dest ^= *src;
-    dest++;
-    src++;
-  }
+  
+  	dest[threadIdx.x] ^= src[threadIdx.x];
+  __syncthreads();
+  
 }
 
 struct state {
@@ -245,13 +243,13 @@ __global__ void hash(unsigned char *out, const unsigned char *in, unsigned long 
     /* compression function */
 		setmessage((u8*)buffer, in, s, inlen, ini_flag, nonce);
 		//__syncblocks();
-		memxor(buffer, ctx, STATEWORDS);
+		memxor(buffer, ctx);
 		permutation(buffer, 0);
-		memxor(ctx, buffer, STATEWORDS);
+		memxor(ctx, buffer);
 		setmessage((u8*)buffer, in, s, inlen, ini_flag, nonce);
 		//__syncblocks();
 		permutation(buffer, 1);
-		memxor(ctx, buffer, STATEWORDS);
+		memxor(ctx, buffer);
 		ini_flag = 0;
 
     /* increase message pointer */
@@ -263,7 +261,7 @@ __global__ void hash(unsigned char *out, const unsigned char *in, unsigned long 
   for (i=0; i<STATEWORDS; i++)
     buffer[i] = ctx[i];
     permutation(buffer, 0);
-    memxor(ctx, buffer, STATEWORDS);
+    memxor(ctx, buffer);
 
   /* return truncated hash value */
   
@@ -274,9 +272,6 @@ __global__ void hash(unsigned char *out, const unsigned char *in, unsigned long 
    {
 	   out[0]=nonce[blockIdx.x];
 	   result_flag = 1;
-	 // found_flag = 1;
-  // printf(" %d",  blockIdx.x);
-  //  asm("trap;");
-   
+	    
    }
 }
