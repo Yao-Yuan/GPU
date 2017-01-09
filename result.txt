@@ -1,3 +1,21 @@
+Kernal Time
+1. Hash Parallel  <<<62,1>>>
+760.606812 ms
+       <<<62,16>>>: 759.944519
+       <<<62,32>>>: 737.735291        
+       <<<62,64>>>: 939.954956
+   Hash Parallel improvement( loop part in HASH)
+       <<62,32>>:   392.904510
+2.
+
+
+
+
+
+
+
+
+
 benchmark:
 
 Summary:
@@ -55,3 +73,9 @@ Summary:
 - Number of Coins:   21
 - Running Time:      140 sec
 ----------------------------------------
+
+
+
+
+
+
