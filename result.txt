@@ -6,7 +6,8 @@ Kernal Time
        <<<62,64>>>: 939.954956
    Hash Parallel improvement( loop part in HASH)
        <<62,32>>:   392.904510
-2.
+2.Function
+   After memxor: 379.527435
 
 
 
