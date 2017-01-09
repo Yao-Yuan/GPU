@@ -9,11 +9,19 @@ Kernal Time
 2.Function
    After memxor: 379.527435
 
+3.Loop Unroll  137.364410
+
+    For loop:  137.366180
+    while loop: 132.404831
 
 
 
+4. Memory 
+     Put constant into global memory: 132.404480
+     Put constant into constant memory: 137.992004
 
-
+    Prefetch col_constant:130.624222
+    Prefetch prefetch_shift:137.743591 to 130.629562
 
 
 
