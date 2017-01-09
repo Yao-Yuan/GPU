@@ -46,3 +46,12 @@ Summary:
 - Number of Coins:   21
 - Running Time:      382 sec
 ----------------------------------------
+
+
+Parallel permutation and other loop part in HASH
+Summary:
+----------------------------------------
+- Processed Blocks:  1000
+- Number of Coins:   21
+- Running Time:      140 sec
+----------------------------------------
