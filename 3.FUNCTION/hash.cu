@@ -107,14 +107,12 @@ __device__ void permutation(u32 *x, int q)
   }
 }
 
-__device__ void memxor(u32* dest, const u32* src, u32 n)
+__device__ void memxor(u32* dest, const u32* src)
 {
-  while(n--)
-  {
-    *dest ^= *src;
-    dest++;
-    src++;
-  }
+  
+  	dest[threadIdx.x] ^= src[threadIdx.x];
+  __syncthreads();
+  
 }
 
 struct state {
@@ -225,13 +223,13 @@ __global__ void hash(unsigned char *out, const unsigned char *in, unsigned long 
     /* compression function */
 		setmessage((u8*)buffer, in, s, inlen, flag, nonce);
 		//__syncblocks();
-		memxor(buffer, ctx, STATEWORDS);
+		memxor(buffer, ctx);
 		permutation(buffer, 0);
-		memxor(ctx, buffer, STATEWORDS);
+		memxor(ctx, buffer);
 		setmessage((u8*)buffer, in, s, inlen, flag, nonce);
 		//__syncblocks();
 		permutation(buffer, 1);
-		memxor(ctx, buffer, STATEWORDS);
+		memxor(ctx, buffer);
 		flag=1;
 
     /* increase message pointer */
@@ -242,7 +240,7 @@ __global__ void hash(unsigned char *out, const unsigned char *in, unsigned long 
   /* output transformation */
     buffer[tid] = ctx[tid];
     permutation(buffer, 0);
-    memxor(ctx, buffer, STATEWORDS);
+    memxor(ctx, buffer);
 
   /* return truncated hash value */
     temphash[tid]=((u8*)ctx)[BYTESLICE(tid+64)];
