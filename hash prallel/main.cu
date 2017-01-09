@@ -36,7 +36,7 @@ void benchmark(void){
     char nonce[NONCE_SIZE+1];
 	
 	char *nonce_enum;
-	
+	char *dummycall;
 	/*  initialize nonce_enum[] using nonce_enumtemp */
 	char nonce_enumtemp[NONCE_NUM+1] = {'a'};
 	for(int i=1; i<NONCE_NUM+1 ; i++)        // eligible for a new kernal to speed up!
@@ -65,7 +65,7 @@ void benchmark(void){
 			printf("\n");*/
             //64 chars + '\0' for binary output
            
-		   
+		   cudaMalloc((char**)&dummycall, 0);
 		   /*    Malloc in global memeory  */
             cudaMalloc((char**)&d_input, sizeof(char)*(INPUT_SIZE+1+1));
 			cudaMalloc((char**)&d_nonce, sizeof(char));
@@ -111,7 +111,7 @@ int main(int argc, char *argv[]){
 		char* d_input;
 	    char* d_nonce;
 		char *nonce_enum;
-	
+	int N = 20 * (1 << 20);
 	/*  initialize nonce_enum[] using nonce_enumtemp */
 	char nonce_enumtemp[NONCE_NUM+1] = {'a'};
 	for(int i=1; i<NONCE_NUM+1 ; i++)        // eligible for a new kernal to speed up!
@@ -126,7 +126,9 @@ int main(int argc, char *argv[]){
             for(int i=0;i<baseInputSize;i++)
                 repeat_ptr[j*baseInputSize+i]=baseInput[i];
         input[baseInputSize*muliplier+nonce_size]='\0';
-		
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
 		
 		/*    Malloc in global memeory  */
             cudaMalloc((char**)&d_input, sizeof(char)*(INPUT_SIZE+1+1));
@@ -137,18 +139,26 @@ int main(int argc, char *argv[]){
 						cudaMemcpyHostToDevice);
 			cudaMemcpy(nonce_enum, nonce_enumtemp, sizeof(char)*62, 
 						cudaMemcpyHostToDevice);
-			/*   Kernal  */			
-			hash<<<62,32>>>((unsigned char*)d_nonce, (unsigned char*)d_input, strlen(input), (unsigned char*)nonce_enum);
-			
+			/*   Kernal  */	
+    cudaEventRecord(start);			
+			hash<<<1,32>>>((unsigned char*)d_nonce, (unsigned char*)d_input, strlen(input), (unsigned char*)nonce_enum);
+    cudaEventRecord(stop);
 			/*   Copy result to CPU  */
 			cudaMemcpy(nonce, d_nonce, sizeof(char), cudaMemcpyDeviceToHost);
 			
-			printf("%c",nonce[0]);
+	cudaEventSynchronize(stop);
+    float milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
+			
+//*			printf("%c",nonce[0]);
+
+	printf("Kernal Time: %f\n", milliseconds);
+//*			printf("Effective Bandwidth (GB/s): %fn", N*4*3/milliseconds/1e6);
 			/*   Free mem  */
 			cudaFree(d_nonce);
 			cudaFree(d_input);
 			cudaFree(nonce_enum);
-      
+        
         free(input);
     }else{
         printf("usage: %s nonce (string) input(string) multiplier(int)\n", argv[0]);
